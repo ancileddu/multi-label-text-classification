@@ -21,6 +21,7 @@ from gensim.models.doc2vec import Doc2Vec , TaggedDocument
 from keras.utils.np_utils import to_categorical
 from gensim.test.utils import common_texts
 from gensim.models import FastText
+from keras.layers import Conv2D, MaxPooling2D
 
 # size of the word embeddings
 embeddings_dim = 300
@@ -42,7 +43,8 @@ print ("Reading pre-trained word embeddings...")
 
 #find the file on https://github.com/mmihaltz/word2vec-GoogleNews-vectors
 embeddings = dict( )
-embeddings = gensim.models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz" , binary=True) 
+#embeddings = gensim.models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz" , binary=True)
+
 #or with fasttext
 #embeddings = FastText(common_texts, size=4, window=3, min_count=1, iter=10)
 
@@ -54,6 +56,9 @@ train_size = int(len(data) * percent)
 
 train_texts = [ txt.lower() for ( txt, label ) in data[0:train_size] ]
 test_texts = [ txt.lower() for ( txt, label ) in data[train_size:-1] ]
+
+embeddings =  gensim.models.Word2Vec(train_texts, min_count=1, size=300)
+
 train_labels = [ label for ( txt , label ) in data[0:train_size] ]
 test_labels = [ label for ( txt , label ) in data[train_size:-1] ]
 num_classes = len( set( train_labels + test_labels ) )
@@ -92,6 +97,7 @@ model.add(LSTM(output_dim=embeddings_dim , activation='tanh', dropout=0.2, recur
 model.add(Dropout(0.25))
 model.add(LSTM(activation='tanh', units=embeddings_dim, dropout=0.2, recurrent_dropout=0.2, recurrent_activation='hard_sigmoid', return_sequences=False))
 model.add(Dropout(0.25))
+
 model.add(Dense(num_classes))
 model.add(Activation('sigmoid'))
 
@@ -101,7 +107,7 @@ model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['accuracy'])
 model.summary()
 
 
-model.fit(train_sequences, train_labels , epochs=30, batch_size=32)
+model.fit(train_sequences, train_labels , epochs=3, batch_size=32)
 
 results = model.predict_classes( test_sequences )
 
