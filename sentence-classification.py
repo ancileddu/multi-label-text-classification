@@ -106,16 +106,18 @@ train_labels = to_categorical(train_labels)
 
 np.random.seed(0)
 
-"""pre-trained Glove(Eng)/W2V Emedding(Ita)"""
+"""pre-trained Glove"""
 embeddings_index = dict()
 
 #ita_version
+#http://hlt.isti.cnr.it/wordembeddings/glove_wiki_window10_size300_iteration50.tar.gz
 #embeddings_index = Word2Vec.load('glove_WIKI') # glove model
 #embeddings_index.wv.save_word2vec_format('word2vec_ita.txt', binary=False)
 
 #f = open("word2vec_ita.txt", encoding="utf8")
 
 #eng_version
+#http://nlp.stanford.edu/data/glove.6B.zip
 f = open("glove.6B.300d.txt", encoding="utf8")
 for line in f:
     values = line.split()
