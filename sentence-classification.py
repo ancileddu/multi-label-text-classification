@@ -37,18 +37,45 @@ path_to_glove_embed = 'glove.6B.100d.txt'
 embeddings = dict( )
 
 print ("Lettura file...")
+'''
+datasets:
+ENG: test-data-rated.txt
+ITA: newdataset.txt
+'''
+
+#ITA-VERSION
+'''
+data = [ ( row["sentence"] , row["label"]  ) for row in csv.DictReader(open("newdataset.txt", encoding="utf8"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+random.shuffle( data )
+train_size = int(len(data))
+
+train_texts = [ txt.lower() for ( txt, label ) in data[0:train_size] ]
+train_labels = [ label for ( txt , label ) in data[0:train_size] ]
+
+datatest = [ ( row["sentence"] , row["label"]  ) for row in csv.DictReader(open("testset.txt", encoding="utf8"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+
+test_size = int(len(datatest))
+
+test_texts = [ txt.lower() for ( txt, label ) in datatest[0:test_size] ]
+test_labels = [ label for ( txt , label ) in datatest[0:test_size] ]
+'''
+
+#ENG-VERSION
+
 data = [ ( row["sentence"] , row["label"]  ) for row in csv.DictReader(open("test-data-rated.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
 random.shuffle( data )
 train_size = int(len(data) * percent)
 
 train_texts = [ txt.lower() for ( txt, label ) in data[0:train_size] ]
+train_labels = [ label for ( txt , label ) in data[0:train_size] ]
+
 test_texts = [ txt.lower() for ( txt, label ) in data[train_size:-1] ]
+test_labels = [ label for ( txt , label ) in data[train_size:-1] ]
+
+
 
 embeddings =  gensim.models.Word2Vec(train_texts, min_count=1, size=300)
 
-train_labels = [ label for ( txt , label ) in data[0:train_size] ]
-test_labels = [ label for ( txt , label ) in data[train_size:-1] ]
-num_classes = len( set( train_labels + test_labels ) )
 tokenizer = Tokenizer(num_words=max_features,lower=True)
 tokenizer.fit_on_texts(train_texts)
 vocab_size = len(tokenizer.word_index) + 1
@@ -79,9 +106,17 @@ train_labels = to_categorical(train_labels)
 
 np.random.seed(0)
 
-"""pre-trained Glove Emedding"""
+"""pre-trained Glove(Eng)/W2V Emedding(Ita)"""
 embeddings_index = dict()
-f = open(path_to_glove_embed, encoding="utf8")
+
+#ita_version
+#embeddings_index = Word2Vec.load('glove_WIKI') # glove model
+#embeddings_index.wv.save_word2vec_format('word2vec_ita.txt', binary=False)
+
+#f = open("word2vec_ita.txt", encoding="utf8")
+
+#eng_version
+f = open("glove.6B.300d.txt", encoding="utf8")
 for line in f:
     values = line.split()
     word = values[0]
@@ -89,7 +124,8 @@ for line in f:
     embeddings_index[word] = coefs
 f.close()
 
-embedding_matrix = np.zeros((vocab_size, 100))
+
+embedding_matrix = np.zeros((vocab_size, 300))
 for word, i in tokenizer.word_index.items():
     embedding_vector = embeddings_index.get(word)
     if embedding_vector is not None:
@@ -97,7 +133,7 @@ for word, i in tokenizer.word_index.items():
 
 
 model = Sequential()
-model.add(Embedding(vocab_size, 100, weights=[embedding_matrix], input_length=50,trainable=False))
+model.add(Embedding(vocab_size, 300, weights=[embedding_matrix], input_length=50,trainable=False))
 model.add(SpatialDropout1D(0.2))
 model.add(LSTM(64, activation='tanh', dropout=0.2, recurrent_dropout=0.2, return_sequences=True))
 model.add(BatchNormalization())
@@ -111,14 +147,25 @@ model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['accuracy'])
 
 model.summary()
 
-model.fit(train_sequences, train_labels , epochs=50, batch_size=32, class_weight=class_weights_dict)
+
+print("---CLASS WEIGHTS---")
+print(class_weights_dict)
+
+model.fit(train_sequences, train_labels , epochs=10, batch_size=32, class_weight=class_weights_dict)
 
 results = model.predict_classes( test_sequences )
 
+count = 0
 f = open("results.txt", "w+", newline="\n")
 for i in range(len(results)):
+    if test_labels[i] == results[i]:
+        count = count+1;
+        
     f.write("stringa: " + str(test_texts[i]) + "\n")
     f.write("res: " + str(test_labels[i]) + "\n")
     f.write("pred: " + str(results[i]) + "\n")
+
+f.write("numero corretti: " + str(count) + " su " + str(len(test_labels)) + "\n")
+
 
 f.close() 
